@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "cstdlib": "cpp",
+        "*.tcc": "cpp",
+        "memory": "cpp",
+        "*.txx": "cpp",
+        "fstream": "cpp",
+        "iostream": "cpp",
+        "mutex": "cpp"
+    }
+}
