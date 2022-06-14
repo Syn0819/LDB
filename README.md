@@ -1,2 +1,8 @@
 # LDB
-A C++ tiny KV storage engine based on skiplist 
+A C++ tiny KV storage engine based on skiplist
+
+## 实现功能
+1. 基于C++11标准实现，尽量做到代码简洁优雅
+2. 采用智能指针管理内存
+3. 实现跳表作为核心数据结构
+4. 支持插入、删除、查询、数据展示、数据落盘、文件加载数据、数据库大小显示
