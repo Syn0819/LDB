@@ -6,6 +6,7 @@
         "*.txx": "cpp",
         "fstream": "cpp",
         "iostream": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "ostream": "cpp"
     }
 }
