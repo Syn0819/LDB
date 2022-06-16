@@ -1,12 +1,11 @@
 #include "include/skiplist.h"
 
-#define EXIT_SCCESS 0
-#define EXIT_FAILED 1
 
 int main() {
 
-    skiplist::Node<int, int> node(1, 1, 1);
-    std::cout << node.get_value() << std::endl;
-
-    return EXIT_SCCESS;
+    skiplist::SkipList<int, int> sl(10);
+    sl.insert_element(2, 2);
+    sl.search_element(2);
+    
+    return EXIT_SUCCESS;
 }

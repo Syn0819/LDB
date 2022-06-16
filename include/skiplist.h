@@ -13,7 +13,7 @@
 #define STORE_FILE "store/dumpFile"
 
 namespace skiplist {
-#define EXIT_SCCESS 0
+#define EXIT_SUCCESS 0
 #define EXIT_FAILED 1
 
 std::mutex mtx;
@@ -40,12 +40,13 @@ private:
 
 template<typename K, typename V>
 Node<K, V>::Node(const K k, const V v, int level) {
+    std::cout << "Node constructor" << std::endl;
     this->key = k;
     this->value = v;
     this->node_level = level;
 
-    this->forward = new Node<K,V>*[level+1];
-    memset(this->forward, 0, sizeof(Node<K,V>*)*(level+1));
+    this->forward = new Node<K, V>*[level+1];
+    memset(this->forward, 0, sizeof(Node<K, V>*)*(level+1));
 };
 
 template<typename K, typename V>
@@ -55,12 +56,12 @@ Node<K, V>::~Node() {
 
 template<typename K, typename V>
 K Node<K, V>::get_key() const {
-    return this->key;
+    return key;
 };
 
 template<typename K, typename V>
 V Node<K, V>::get_value() const {
-    return this->value;
+    return value;
 };
 
 template<typename K, typename V>
@@ -92,7 +93,7 @@ private:
     int _skip_list_level;       // Tht current level in this skiplist
     int _element_count;         // The number of element in this skiplist
     Node<K, V>* _header;        // The pointer to header node
-    std::ofstream _file_writer; /
+    std::ofstream _file_writer; 
     std::ifstream _file_reader;
 };
 
@@ -122,17 +123,30 @@ SkipList<K, V>::~SkipList() {
 };
 
 template<typename K, typename V>
-int SkipList<K, V>::get_random_level() {
-    return rand() % this->_max_level + 1; // [1, _max_level]
+int SkipList<K, V>::get_random_level(){
+
+    int k = 1;
+    while (rand() % 2) {
+        k++;
+    }
+    k = (k < _max_level) ? k : _max_level;
+    std::cout << "get random level: " << k << std::endl;
+    return k;
 };
+
+template<typename K, typename V>
+Node<K, V>* SkipList<K,V>::create_node(K key, V value, int level) {
+    Node<K, V> *n = new Node<K,V>(key, value, level);
+    return n;
+}
 
 template<typename K, typename V>
 int SkipList<K,V>::insert_element(K key, V value) {
     // start insert element k,v
-    
+    std::cout << "start insert element" << std::endl;
     mtx.lock();
     //  
-    Node<K, V> *currentNode = _header;
+    Node<K, V> *currentNode = this->_header;
     // update is used to record the search way, and initialize it
     Node<K, V> *update[_max_level + 1];
     memset(update, 0, sizeof(Node<K, V>*) * (_max_level + 1));
@@ -141,12 +155,15 @@ int SkipList<K,V>::insert_element(K key, V value) {
     // from the current level of this skiplist to the level 0
     // if the current node have next node and the next code's key less than the given key
     //      the node go to the next node
-    for(int i = _skip_list_level; i >= 0; --i) {
-        while(currentNode->forward[i] != NULL && currentNode->forward[i]->get_key() < key) {
+    for(int i = _skip_list_level; i >= 0; i--) {
+        std::cout << "i: " << i << std::endl;
+        while(currentNode->forward[i] != nullptr && currentNode->forward[i]->get_key() < key) {
             currentNode = currentNode->forward[i];
         }
         update[i] = currentNode;
+        std::cout << "update[i]: " << &currentNode << std::endl;
     }
+    std::cout << "record search way finish" << std::endl;
     // find the insert place
     currentNode = currentNode->forward[0];
     if(currentNode != nullptr && currentNode->get_key() == key) {
@@ -154,7 +171,9 @@ int SkipList<K,V>::insert_element(K key, V value) {
         std::cout << "key: " << key << ", exists" << std::endl;
         mtx.unlock();
         return EXIT_FAILED;
-    } else if(currentNode == nullptr || currentNode->get_key() != key) {
+    }
+    if(currentNode == nullptr || currentNode->get_key() != key) {
+        std::cout << "start insert now" << std::endl;
         // check the node is not existed, and instert the node now
         // first, get the random level of this node
         // second, for each level from [0, random_level], set the forword array
@@ -162,18 +181,18 @@ int SkipList<K,V>::insert_element(K key, V value) {
 
         // if the random level biger than the current skip list level, then need to update the update array
         if(random_level > _skip_list_level) {
-            for(int i = random_level+1; i <= _max_level; i++) {
+            for(int i = _skip_list_level+1; i < random_level + 1; i++) {
                 update[i] = _header;
             }
             _skip_list_level = random_level;
         }
-        
+        std::cout << "work for random level finish" << std::endl;
         // create the node
-        Node<K, V>* newNode = create_node(key, value, _skip_list_level);
-
+        Node<K, V>* newNode = create_node(key, value, random_level);
+        std::cout << "create a new node" << std::endl;
         // insert the node
         for(int i = 0; i <= random_level; i++) {
-            newNode->forward[i] = update[i];
+            newNode->forward[i] = update[i]->forward[i];
             update[i]->forward[i] = newNode;
         }
         std::cout << "Insert Node successfully, which key=" << key <<", value=" << value << std::endl;
@@ -181,9 +200,41 @@ int SkipList<K,V>::insert_element(K key, V value) {
         ++_element_count;
     }
     
+    mtx.unlock();
+    return EXIT_SUCCESS;
+}
+
+template<typename K, typename V>
+bool SkipList<K, V>::search_element(K key) {
+    // search the given key
+    // search need mutex? In this storage, YES. Since read and write may concureent
+    // if a thread read a KV pair while another thread write a new value to this pair
+    // it can not be promise we read the latest value
+    mtx.lock();
+    Node<K, V> *currentNode = _header;
+
+    for(int i = _skip_list_level; i >= 0; i--) {
+        while(currentNode->forward[i] != nullptr && currentNode->forward[i]->get_key() < key) {
+            currentNode = currentNode->forward[i];
+        }
+    }
+
+    currentNode = currentNode->forward[0];
+
+    if(currentNode == nullptr) {
+        std::cout << "Error! the given greater than all KV pair in storage" << std::endl;
+        mtx.unlock();
+        return false;
+    }
+
+    if(currentNode && currentNode->get_key() == key) {
+        std::cout << "Found key: " << key << ", the value is: " << currentNode->get_value() << std::endl;
+    }
 
     mtx.unlock();
-};
+    return true;
+}
+
 
 }
 
