@@ -156,12 +156,10 @@ int SkipList<K,V>::insert_element(K key, V value) {
     // if the current node have next node and the next code's key less than the given key
     //      the node go to the next node
     for(int i = _skip_list_level; i >= 0; i--) {
-        std::cout << "i: " << i << std::endl;
         while(currentNode->forward[i] != nullptr && currentNode->forward[i]->get_key() < key) {
             currentNode = currentNode->forward[i];
         }
         update[i] = currentNode;
-        std::cout << "update[i]: " << &currentNode << std::endl;
     }
     std::cout << "record search way finish" << std::endl;
     // find the insert place
@@ -235,6 +233,45 @@ bool SkipList<K, V>::search_element(K key) {
     return true;
 }
 
+
+template<typename K, typename V>
+void SkipList<K, V>::delete_element(K key) {
+    // delete the given key
+    // search element before the given key
+    std::cout << "start delete element" << std::endl;
+    mtx.lock();
+
+    Node<K, V> *currentNode = this->_header;
+    Node<K, V> *update[_max_level+1];
+    memset(update, 0, sizeof(Node<K, V>*)*(_max_level+1));
+
+    for(int i = _skip_list_level; i >= 0; --i) {
+        while(currentNode->forward[i] != nullptr && currentNode->forward[i]->get_key() < key) {
+            currentNode = currentNode->forward[i];
+        }
+        update[i] = currentNode;
+    }
+    
+    currentNode = currentNode->forward[0];
+    if(currentNode != nullptr && currentNode->get_key() == key) {
+        // find the key which need to delete
+        for(int i = 0; i <= _skip_list_level; ++i) {
+            if(update[i]->forward[i] != currentNode) {
+                break;
+            }
+            update[i]->forward[i] = currentNode->forward[i];
+        }
+
+        while(_skip_list_level > 0 && _header->forward[_skip_list_level] == 0) {
+            --_skip_list_level;            
+        }
+        
+        std::cout << "Successfully deleted key: " << key << std::endl;
+        --_element_count; 
+    }
+    mtx.unlock();
+    return;
+}
 
 }
 
