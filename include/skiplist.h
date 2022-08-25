@@ -9,7 +9,7 @@
 #include <fstream>
 #include <istream>
 #include <stdio.h>
-
+#include <memory>
 #define STORE_FILE "store/dumpFile"
 
 namespace skiplist {
@@ -91,8 +91,8 @@ private:
 private:
     int _max_level;             // The maximux number of level in this skiplist
     int _skip_list_level;       // Tht current level in this skiplist
-    int _element_count;         // The number of element in this skiplist
-    Node<K, V>* _header;        // The pointer to header node
+    int _element_count;         // The number of element in this skiplist       
+    std::shared_ptr<Node<K, V>> _header;    // The pointer to header node
     std::ofstream _file_writer; 
     std::ifstream _file_reader;
 };
@@ -106,14 +106,14 @@ SkipList<K, V>::SkipList(int max_level) {
 
     K k;
     V v;
-    this->_header = new Node<K, V>(k, v, _max_level);
+    this->_header = std::shared_ptr<Node<K, V>>(new Node<K, V>(k, v, _max_level));
 };
 
 // destructor
 template<typename K, typename V>
 SkipList<K, V>::~SkipList() {
     // free resouces
-    delete _header;
+    _header.reset();
     if(_file_writer.is_open()) {
         _file_writer.close();
     }
@@ -146,7 +146,7 @@ int SkipList<K,V>::insert_element(K key, V value) {
     std::cout << "start insert element" << std::endl;
     mtx.lock();
     //  
-    Node<K, V> *currentNode = this->_header;
+    Node<K, V> *currentNode = this->_header.get();
     // update is used to record the search way, and initialize it
     Node<K, V> *update[_max_level + 1];
     memset(update, 0, sizeof(Node<K, V>*) * (_max_level + 1));
@@ -180,7 +180,7 @@ int SkipList<K,V>::insert_element(K key, V value) {
         // if the random level biger than the current skip list level, then need to update the update array
         if(random_level > _skip_list_level) {
             for(int i = _skip_list_level+1; i < random_level + 1; i++) {
-                update[i] = _header;
+                update[i] = _header.get();
             }
             _skip_list_level = random_level;
         }
@@ -209,7 +209,7 @@ bool SkipList<K, V>::search_element(K key) {
     // if a thread read a KV pair while another thread write a new value to this pair
     // it can not be promise we read the latest value
     mtx.lock();
-    Node<K, V> *currentNode = _header;
+    Node<K, V> *currentNode = _header.get();
 
     for(int i = _skip_list_level; i >= 0; i--) {
         while(currentNode->forward[i] != nullptr && currentNode->forward[i]->get_key() < key) {
@@ -241,7 +241,7 @@ void SkipList<K, V>::delete_element(K key) {
     std::cout << "start delete element" << std::endl;
     mtx.lock();
 
-    Node<K, V> *currentNode = this->_header;
+    Node<K, V> *currentNode = this->_header.get();
     Node<K, V> *update[_max_level+1];
     memset(update, 0, sizeof(Node<K, V>*)*(_max_level+1));
 
